@@ -27,7 +27,7 @@ pipeline {
                     ecrLogin()
                     sh """
                         cd ${mainDir}
-                        ./gradlew jib -Djib.to.image=${ecrUrl}/${repository}:${tagName} -Djib.console='plain'
+                        ./gradlew jib -Djib.to.image=${ecrUrl}/${repository}:${currentBuild.number} -Djib.console='plain'
                     """
                 }
             }
