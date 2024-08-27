@@ -38,7 +38,7 @@ pipeline {
                     script {
                         // AWS CLI를 통해 ECR 이미지 스캔 결과 조회
                         def scanFindings = sh(
-                            script: "aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${AWS_REGION} --output json",
+                            script: "aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${region} --output json",
                             returnStdout: true
                         ).trim()
 
