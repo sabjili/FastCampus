@@ -1,10 +1,8 @@
 def mainDir="Part2_Docker/Chapter06/3-2_ecr-jenkins-docker"
-def region="<AWS Region>"
-def ecrUrl="<AWS ECR URL>"
-def repository="<Image Repository Name>"
-def deployHost="<Deploy VM Private IP>"
-def tagName="<Image Tag Name>"
-
+def region="ap-northeast-2"
+def ecrUrl="663733199366.dkr.ecr.ap-northeast-2.amazonaws.com"
+def repository="test"
+def deployHost="172.31.20.69"
 
 pipeline {
     agent any
@@ -34,12 +32,41 @@ pipeline {
                 }
             }
         }
+        stage('Check AWS ECR Repository'){
+            steps{
+                withAWS(region:"${region}", credentials:"aws-key") {
+                    ecrLogin()
+                    script {
+                        // AWS CLI를 통해 ECR 이미지 스캔 결과 조회
+                        def scanFindings = sh(
+                            script: "aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${AWS_REGION} --output json",
+                            returnStdout: true
+                        ).trim()
+
+                        // JSON 파싱
+                        def scanData = readJSON text: scanFindings
+
+                        // 발견된 취약점이 있는지 확인
+                        def findingsCount = scanData.imageScanFindings.findings.size()
+                        echo "Number of findings: ${findingsCount}"
+
+                        // 만약 취약점이 발견되면 빌드 실패
+                        if (findingsCount > 0) {
+                            error("Image scan found vulnerabilities. Failing the build.")
+                        } else {
+                            echo "No vulnerabilities found in image."
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Deploy to AWS EC2 VM'){
             steps{
                 sshagent(credentials : ["deploy-key"]) {
                     sh "ssh -o StrictHostKeyChecking=no ubuntu@${deployHost} \
                      'aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${ecrUrl}/${repository}; \
-                      docker run -d -p 80:8080 -t ${ecrUrl}/${repository}:${tagName};'"
+                      docker run -d -p 80:8080 -t ${ecrUrl}/${repository}:${currentBuild.number};'"
                 }
             }
         }
