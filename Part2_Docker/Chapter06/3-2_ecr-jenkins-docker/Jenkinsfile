@@ -34,28 +34,25 @@ pipeline {
         }
         stage('Check AWS ECR Repository'){
             steps{
-                withAWS(region:"${region}", credentials:"aws-key") {
-                    ecrLogin()
-                    script {
-                        // AWS CLI를 통해 ECR 이미지 스캔 결과 조회
-                        def scanFindings = sh(
-                            script: "aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${AWS_REGION} --output json",
-                            returnStdout: true
-                        ).trim()
+                script {
+                    // AWS CLI를 통해 ECR 이미지 스캔 결과 조회
+                    def scanFindings = sh(
+                        script: "aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${AWS_REGION} --output json",
+                        returnStdout: true
+                    ).trim()
 
-                        // JSON 파싱
-                        def scanData = readJSON text: scanFindings
+                    // JSON 파싱
+                    def scanData = readJSON text: scanFindings
 
-                        // 발견된 취약점이 있는지 확인
-                        def findingsCount = scanData.imageScanFindings.findings.size()
-                        echo "Number of findings: ${findingsCount}"
+                    // 발견된 취약점이 있는지 확인
+                    def findingsCount = scanData.imageScanFindings.findings.size()
+                    echo "Number of findings: ${findingsCount}"
 
-                        // 만약 취약점이 발견되면 빌드 실패
-                        if (findingsCount > 0) {
-                            error("Image scan found vulnerabilities. Failing the build.")
-                        } else {
-                            echo "No vulnerabilities found in image."
-                        }
+                    // 만약 취약점이 발견되면 빌드 실패
+                    if (findingsCount > 0) {
+                        error("Image scan found vulnerabilities. Failing the build.")
+                    } else {
+                        echo "No vulnerabilities found in image."
                     }
                 }
             }
