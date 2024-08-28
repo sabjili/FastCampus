@@ -60,9 +60,9 @@ pipeline {
                                 def scanData = readJSON text: scanFindings
                                 def findingsCount = 0
                                 if(scanData.imageScanFindings.enhancedFindings == null){
-                                    size = scanData.imageScanFindings.findings.size() // 취약점 기본 검색시
+                                    findingsCount = scanData.imageScanFindings.findings.size() // 취약점 기본 검색시
                                 }else{
-                                    size = scanData.imageScanFindings.enhancedFindings.size() // 취약점 강화했을 경우
+                                    findingsCount = scanData.imageScanFindings.enhancedFindings.size() // 취약점 강화했을 경우
                                 }
                                 echo "Number of findings: ${findingsCount}"
 
