@@ -47,33 +47,33 @@ pipeline {
                         def delayBetweenRetries = 30 // 30초 딜레이
 
                         for (int i = 0; i < maxRetries; i++) {
-                            try {
-                                // AWS CLI를 통해 ECR 이미지 스캔 결과 조회
-                                def command = """
-                                    aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${region} --output json
-                                """
 
-                                def status = sh(script: command, returnStatus: true)
-                                if (status == 0) {
-                                    // 명령이 성공적으로 실행된 경우
-                                    def scanFindings = sh(script: command, returnStdout: true).trim()
-                                    def scanData = readJSON text: scanFindings
-                                    def findingsCount = scanData.imageScanFindings.findings.size()
-                                    echo "Number of findings: ${findingsCount}"
+                            // AWS CLI를 통해 ECR 이미지 스캔 결과 조회
+                            def command = """
+                                aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${region} --output json
+                            """
 
-                                    if (findingsCount > 0) {
-                                        error("Image scan found vulnerabilities. Failing the build.")
-                                    } else {
-                                        echo "No vulnerabilities found in image."
-                                    }
+                            def status = sh(script: command, returnStatus: true)
+                            if (status == 0) {
+                                // 명령이 성공적으로 실행된 경우
+                                def scanFindings = sh(script: command, returnStdout: true).trim()
+                                def scanData = readJSON text: scanFindings
+                                def findingsCount = scanData.imageScanFindings.findings.size()
+                                echo "Number of findings: ${findingsCount}"
 
-                                    scanSuccess = true
-                                    break
+                                if (findingsCount > 0) {
+                                    error("Image scan found vulnerabilities. Failing the build.")
                                 } else {
-                                    echo "Scan not found. Retrying in ${delayBetweenRetries} seconds..."
-                                    sleep(time: delayBetweenRetries, unit: 'SECONDS')
+                                    echo "No vulnerabilities found in image."
                                 }
+
+                                scanSuccess = true
+                                break
+                            } else {
+                                echo "Scan not found. Retrying in ${delayBetweenRetries} seconds..."
+                                sleep(time: delayBetweenRetries, unit: 'SECONDS')
                             }
+
                         }
 
                         if (!scanSuccess) {
