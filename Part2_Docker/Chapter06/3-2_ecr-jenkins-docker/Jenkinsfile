@@ -58,7 +58,12 @@ pipeline {
                                 // 명령이 성공적으로 실행된 경우
                                 def scanFindings = sh(script: command, returnStdout: true).trim()
                                 def scanData = readJSON text: scanFindings
-                                def findingsCount = scanData.imageScanFindings.findings.size()
+                                def findingsCount = 0
+                                if(scanData.imageScanFindings.enhancedFindings == null){
+                                    size = scanData.imageScanFindings.findings.size() // 취약점 기본 검색시
+                                }else{
+                                    size = scanData.imageScanFindings.enhancedFindings.size() // 취약점 강화했을 경우
+                                }
                                 echo "Number of findings: ${findingsCount}"
 
                                 if (findingsCount > 0) {
