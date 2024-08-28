@@ -49,32 +49,29 @@ pipeline {
                         for (int i = 0; i < maxRetries; i++) {
                             try {
                                 // AWS CLI를 통해 ECR 이미지 스캔 결과 조회
-                                def scanFindings = sh(
-                                    script: "aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${region} --output json",
-                                    returnStdout: true
-                                ).trim()
+                                def command = """
+                                    aws ecr describe-image-scan-findings --repository-name ${repository} --image-id imageTag=${currentBuild.number} --region ${region} --output json
+                                """
 
-                                // JSON 파싱
-                                def scanData = readJSON text: scanFindings
+                                def status = sh(script: command, returnStatus: true)
+                                if (status == 0) {
+                                    // 명령이 성공적으로 실행된 경우
+                                    def scanFindings = sh(script: command, returnStdout: true).trim()
+                                    def scanData = readJSON text: scanFindings
+                                    def findingsCount = scanData.imageScanFindings.findings.size()
+                                    echo "Number of findings: ${findingsCount}"
 
-                                // 발견된 취약점이 있는지 확인
-                                def findingsCount = scanData.imageScanFindings.findings.size()
-                                echo "Number of findings: ${findingsCount}"
+                                    if (findingsCount > 0) {
+                                        error("Image scan found vulnerabilities. Failing the build.")
+                                    } else {
+                                        echo "No vulnerabilities found in image."
+                                    }
 
-                                // 만약 취약점이 발견되면 빌드 실패
-                                if (findingsCount > 0) {
-                                    error("Image scan found vulnerabilities. Failing the build.")
+                                    scanSuccess = true
+                                    break
                                 } else {
-                                    echo "No vulnerabilities found in image."
-                                }
-                                scanSuccess = true
-                                break
-                            } catch (Exception e) {
-                                if (e.getMessage().contains("ScanNotFoundException")) {
                                     echo "Scan not found. Retrying in ${delayBetweenRetries} seconds..."
                                     sleep(time: delayBetweenRetries, unit: 'SECONDS')
-                                } else {
-                                    error("Unexpected error occurred: ${e.getMessage()}")
                                 }
                             }
                         }
