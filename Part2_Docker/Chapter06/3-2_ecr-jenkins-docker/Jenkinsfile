@@ -35,7 +35,11 @@ pipeline {
         stage('Check AWS ECR Repository'){
             steps{
                 withAWS(region:"${region}", credentials:"aws-key") {
-                    ecrLogin()
+                    sh """
+                        aws --version
+                        aws configure list
+                        env | grep AWS
+                    """
                     script {
                         // AWS CLI를 통해 ECR 이미지 스캔 결과 조회
                         def scanFindings = sh(
