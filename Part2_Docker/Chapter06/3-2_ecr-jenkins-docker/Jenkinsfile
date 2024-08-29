@@ -59,11 +59,17 @@ pipeline {
                                 def scanFindings = sh(script: command, returnStdout: true).trim()
                                 def scanData = readJSON text: scanFindings
                                 def findingsCount = 0
-                                if(scanData.imageScanFindings.enhancedFindings == null){
-                                    findingsCount = scanData.imageScanFindings.findings.size() // 취약점 기본 검색시
-                                }else{
-                                    findingsCount = scanData.imageScanFindings.enhancedFindings.size() // 취약점 강화했을 경우
+                                if (scanData.imageScanFindings.findingSeverityCounts) {
+                                    def severityCounts = scanData.imageScanFindings.findingSeverityCounts
+                                    echo "'findingSeverityCounts'에 ${severityCounts.size()}개의 항목이 존재합니다."
+
+                                    // 각 취약점 심각도와 그에 대한 카운트를 출력
+                                    severityCounts.each { severity, count ->
+                                        echo "${severity}: ${count}개"
+                                        findingsCount += count
+                                    }
                                 }
+                                                               
                                 echo "Number of findings: ${findingsCount}"
 
                                 if (findingsCount > 0) {
